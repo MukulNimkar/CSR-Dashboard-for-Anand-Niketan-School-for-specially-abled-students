@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>Upload CSR Data</h1>
+
+<div class="card">
+
+    <form method="POST" enctype="multipart/form-data">
+        <div style="margin-bottom:15px;">
+            <input type="file" name="file" required>
+        </div>
+
+        <button type="submit" style="background:#2563eb;color:white;
+                       padding:10px 18px;
+                       border:none;
+                       border-radius:6px;
+                       cursor:pointer;">
+            Upload & Generate Dashboard
+        </button>
+    </form>
+
+    <br>
+
+    <p><strong>Excel must contain:</strong></p>
+    <ul>
+        <li>Sheet: <b>students</b></li>
+        <li>Sheet: <b>infrastructure</b></li>
+    </ul>
+
+</div>
+
+
+<!-- ================= UPLOAD LOGS ================= -->
+
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3 style="margin: 0;">Upload Logs</h3>
+        <input type="text" id="logSearch" onkeyup="searchTable('logSearch', 'logTable')"
+            placeholder="Search file, date, status..."
+            style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; width: 300px; font-family: 'Inter', sans-serif; font-size: 14px;">
+    </div>
+
+    {% if logs and logs|length > 0 %}
+    <table id="logTable">
+        <thead>
+            <tr>
+                <th>File Name</th>
+                <th>Upload Time</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr>
+                <td>{{ log.filename }}</td>
+                <td>{{ log.time }}</td>
+                <td>
+                    {% if "Success" in log.status %}
+                    <span style="color:green;font-weight:600;">
+                        {{ log.status }}
+                    </span>
+                    {% else %}
+                    <span style="color:red;font-weight:600;">
+                        {{ log.status }}
+                    </span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <br>
+
+    <a href="{{ url_for('reset_logs') }}">
+        <button style="background:#dc2626;
+                           color:white;
+                           padding:8px 16px;
+                           border:none;
+                           border-radius:6px;
+                           cursor:pointer;">
+            Reset Logs
+        </button>
+    </a>
+
+    {% else %}
+    <p>No uploads yet.</p>
+    {% endif %}
+
+</div>
+
+{% endblock %}
