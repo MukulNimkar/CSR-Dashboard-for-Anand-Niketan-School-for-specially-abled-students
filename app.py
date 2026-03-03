@@ -16,20 +16,32 @@ app = Flask(__name__)
 # Generate a secret key if not provided (needed for sessions)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "csr_dashboard_secret_key_123")
 
-UPLOAD_FOLDER = "uploads"
+# Vercel's file system is read-only except for /tmp
+if os.environ.get("VERCEL"):
+    UPLOAD_FOLDER = "/tmp/uploads"
+else:
+    UPLOAD_FOLDER = "uploads"
+
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
 # 🔥 SET YOUR WKHTMLTOPDF PATH HERE
-WKHTML_PATH = r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"
-config = pdfkit.configuration(wkhtmltopdf=WKHTML_PATH)
+WKHTML_PATH = os.environ.get("WKHTML_PATH", r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe")
+try:
+    config = pdfkit.configuration(wkhtmltopdf=WKHTML_PATH)
+except Exception as e:
+    print(f"Warning: wkhtmltopdf not found at {WKHTML_PATH}. PDF export will fail.")
+    config = None
 
 # =====================================================
 # AUTHENTICATION HELPERS
 # =====================================================
-CONFIG_FILE = "config.json"
+if os.environ.get("VERCEL"):
+    CONFIG_FILE = "/tmp/config.json"
+else:
+    CONFIG_FILE = "config.json"
 
 def get_password_hash():
     if os.path.exists(CONFIG_FILE):
@@ -511,6 +523,9 @@ def export_pdf():
         logo_path=logo_path,
         date=datetime.now().strftime("%d %B %Y")
     )
+
+    if config is None:
+        return "PDF generation is not configured on this server.", 500
 
     options = {
         "enable-local-file-access": None
