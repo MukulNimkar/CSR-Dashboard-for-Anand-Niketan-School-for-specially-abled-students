@@ -126,6 +126,7 @@
                 plugins: {
                     legend: {
                         labels: {
+                            color: "#000",
                             font: {
                                 size: 14,
                                 weight: "bold"
@@ -136,15 +137,19 @@
                 scales: {
                     x: {
                         ticks: {
+                            color: "#000",
                             font: {
-                                size: 13
+                                size: 13,
+                                weight: "bold"
                             }
                         }
                     },
                     y: {
                         ticks: {
+                            color: "#000",
                             font: {
-                                size: 13
+                                size: 13,
+                                weight: "bold"
                             }
                         }
                     }
@@ -238,7 +243,29 @@
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: "#000",
+                            font: { weight: "bold" }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            color: "#000",
+                            font: { weight: "bold" }
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            color: "#000",
+                            font: { weight: "bold" }
+                        }
+                    }
+                }
             }
         });
     }

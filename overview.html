@@ -2,11 +2,7 @@
 {% block content %}
 
 <h1>CSR Overview Dashboard</h1>
-<a href="/export_pdf">
-    <button style="padding:10px 20px; background:#1e40af; color:white; border:none; border-radius:6px;">
-        Export PDF Report
-    </button>
-</a>
+
 <div style="margin-bottom:20px;">
     <a href="{{ url_for('export_pdf') }}">
         <button style="
@@ -21,7 +17,6 @@
         </button>
     </a>
 </div>
-
 <!-- ================= KPI GRID ================= -->
 <div class="kpi-grid">
 
@@ -234,7 +229,8 @@
                     label: "Average Improvement",
                     data: therapyValues,
                     backgroundColor: "#2563eb",
-                    borderRadius: 8
+                    borderRadius: 8,
+                    maxBarThickness: 50
                 }]
             },
             options: {
@@ -244,6 +240,10 @@
                     legend: {
                         display: false
                     }
+                },
+                scales: {
+                    x: { ticks: { color: "#000", font: { weight: "bold" } } },
+                    y: { ticks: { color: "#000", font: { weight: "bold" } } }
                 }
             }
         });
@@ -262,7 +262,8 @@
                     label: "Average Improvement",
                     data: disImpValues,
                     backgroundColor: "#10b981",
-                    borderRadius: 8
+                    borderRadius: 8,
+                    maxBarThickness: 50
                 }]
             },
             options: {
@@ -272,6 +273,10 @@
                     legend: {
                         display: false
                     }
+                },
+                scales: {
+                    x: { ticks: { color: "#000", font: { weight: "bold" } } },
+                    y: { ticks: { color: "#000", font: { weight: "bold" } } }
                 }
             }
         });

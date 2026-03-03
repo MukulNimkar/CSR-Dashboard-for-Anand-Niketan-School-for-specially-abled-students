@@ -76,7 +76,10 @@
             responsive: true,
             maintainAspectRatio: false,
             plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true } }
+            scales: {
+                x: { ticks: { color: "#000", font: { weight: "bold" } } },
+                y: { beginAtZero: true, ticks: { color: "#000", font: { weight: "bold" } } }
+            }
         }
     });
 
