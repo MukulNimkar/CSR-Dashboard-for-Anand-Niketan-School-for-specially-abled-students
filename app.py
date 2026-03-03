@@ -1,8 +1,11 @@
-from flask import Flask, render_template, request, redirect, url_for, make_response
+from flask import Flask, render_template, request, redirect, url_for, make_response, session, flash
 import os
+import json
 from datetime import datetime
 import pdfkit
 import matplotlib.pyplot as plt
+from functools import wraps
+from werkzeug.security import generate_password_hash, check_password_hash
 from utils import process_excel, calculate_kpis
 
 app = Flask(__name__)
@@ -10,6 +13,9 @@ app = Flask(__name__)
 # =====================================================
 # CONFIG
 # =====================================================
+# Generate a secret key if not provided (needed for sessions)
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "csr_dashboard_secret_key_123")
+
 UPLOAD_FOLDER = "uploads"
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
@@ -19,6 +25,34 @@ if not os.path.exists(UPLOAD_FOLDER):
 # 🔥 SET YOUR WKHTMLTOPDF PATH HERE
 WKHTML_PATH = r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"
 config = pdfkit.configuration(wkhtmltopdf=WKHTML_PATH)
+
+# =====================================================
+# AUTHENTICATION HELPERS
+# =====================================================
+CONFIG_FILE = "config.json"
+
+def get_password_hash():
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, "r") as f:
+            data = json.load(f)
+            return data.get("password_hash")
+    # Default password is 'admin123' if not set
+    default_hash = generate_password_hash("admin123")
+    set_password_hash(default_hash)
+    return default_hash
+
+def set_password_hash(pwd_hash):
+    data = {"password_hash": pwd_hash}
+    with open(CONFIG_FILE, "w") as f:
+        json.dump(data, f)
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if "logged_in" not in session:
+            return redirect(url_for("login", next=request.url))
+        return f(*args, **kwargs)
+    return decorated_function
 
 # =====================================================
 # GLOBAL STORAGE
@@ -42,9 +76,58 @@ def generate_chart(labels, values, filename):
     return os.path.abspath(path)
 
 # =====================================================
+# AUTHENTICATION ROUTES
+# =====================================================
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    error = None
+    if request.method == "POST":
+        password = request.form.get("password")
+        stored_hash = get_password_hash()
+        
+        if check_password_hash(stored_hash, password):
+            session["logged_in"] = True
+            next_page = request.args.get("next")
+            return redirect(next_page or url_for("overview"))
+        else:
+            error = "Invalid password. Please try again."
+            
+    return render_template("login.html", error=error)
+
+@app.route("/logout")
+def logout():
+    session.pop("logged_in", None)
+    return redirect(url_for("login"))
+
+@app.route("/update_password", methods=["GET", "POST"])
+@login_required
+def update_password():
+    error = None
+    success = None
+    if request.method == "POST":
+        current_password = request.form.get("current_password")
+        new_password = request.form.get("new_password")
+        confirm_password = request.form.get("confirm_password")
+        
+        stored_hash = get_password_hash()
+        
+        if not check_password_hash(stored_hash, current_password):
+            error = "Current password is incorrect."
+        elif new_password != confirm_password:
+            error = "New passwords do not match."
+        elif len(new_password) < 6:
+            error = "New password must be at least 6 characters long."
+        else:
+            set_password_hash(generate_password_hash(new_password))
+            success = "Password updated successfully!"
+            
+    return render_template("update_password.html", error=error, success=success)
+
+# =====================================================
 # OVERVIEW
 # =====================================================
 @app.route("/")
+@login_required
 def overview():
     global kpis
     if not kpis:
@@ -71,6 +154,7 @@ def overview():
 # STUDENTS
 # =====================================================
 @app.route("/students")
+@login_required
 def students():
     global students_df, kpis
 
@@ -97,6 +181,7 @@ def students():
 # INFRASTRUCTURE
 # =====================================================
 @app.route("/infrastructure")
+@login_required
 def infrastructure():
     global infra_df
 
@@ -211,6 +296,7 @@ def infrastructure():
 # DONOR TREE 
 # =====================================================
 @app.route("/donor_tree")
+@login_required
 def donor_tree():
     global infra_df
 
@@ -236,6 +322,7 @@ def donor_tree():
 # UPLOAD + LOGS
 # =====================================================
 @app.route("/upload", methods=["GET", "POST"])
+@login_required
 def upload():
     global students_df, infra_df, kpis, upload_logs
 
@@ -275,6 +362,7 @@ def upload():
 # RESET LOGS
 # =====================================================
 @app.route("/reset_logs")
+@login_required
 def reset_logs():
     global upload_logs
     upload_logs = []
@@ -284,6 +372,7 @@ def reset_logs():
 # EXPORT FULL PROFESSIONAL PDF WITH CHARTS
 # =====================================================
 @app.route("/export_pdf")
+@login_required
 def export_pdf():
     global students_df, infra_df, kpis
 
