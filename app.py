@@ -444,7 +444,7 @@ def export_pdf():
     plt.bar(therapy_labels, therapy_values)
     plt.xticks(rotation=45)
     plt.tight_layout()
-    therapy_chart_path = os.path.abspath("static/therapy_chart.png")
+    therapy_chart_path = "/tmp/therapy_chart.png"
     plt.savefig(therapy_chart_path)
     plt.close()
 
@@ -454,7 +454,7 @@ def export_pdf():
     ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda x, pos: f'Rs.{int(x):,}'))
     plt.xticks(rotation=45)
     plt.tight_layout()
-    infra_chart_path = os.path.abspath("static/infra_chart.png")
+    infra_chart_path = "/tmp/infra_chart.png"
     plt.savefig(infra_chart_path)
     plt.close()
 
