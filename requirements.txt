@@ -1,6 +1,4 @@
 Flask
-paramiko
-cryptography
 Werkzeug
 pandas
 openpyxl

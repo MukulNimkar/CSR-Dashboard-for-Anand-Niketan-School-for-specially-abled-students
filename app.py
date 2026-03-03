@@ -3,6 +3,8 @@ import os
 import json
 from datetime import datetime
 import pdfkit
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
