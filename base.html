@@ -248,11 +248,18 @@
                 <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Anand Niketan Logo">
             </div>
 
+            {% if session.get('logged_in') %}
             <a href="/">Overview</a>
             <a href="/students">Student Performance</a>
             <a href="/infrastructure">Infrastructure Funding</a>
             <a href="/donor_tree">Donor Tree</a>
             <a href="/upload">Upload Data</a>
+
+            <div style="margin-top: 40px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">
+                <a href="/update_password" style="color: #94a3b8; font-size: 14px;">⚙️ Change Password</a>
+                <a href="/logout" style="color: #ef4444; font-size: 14px; margin-top: 8px;">🚪 Logout</a>
+            </div>
+            {% endif %}
 
         </div>
 
