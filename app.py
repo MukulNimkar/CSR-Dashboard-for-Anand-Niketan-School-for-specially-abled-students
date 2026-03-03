@@ -383,43 +383,28 @@ def export_pdf():
     if students_df is None or infra_df is None:
         return redirect("/")
 
-    import pdfkit
+    from io import BytesIO
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     import matplotlib.ticker as ticker
-    
-    WKHTML_PATH = os.environ.get("WKHTML_PATH", r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe")
-    try:
-        config = pdfkit.configuration(wkhtmltopdf=WKHTML_PATH)
-    except Exception as e:
-        print(f"Warning: wkhtmltopdf not found at {WKHTML_PATH}. PDF export will fail.")
-        config = None
+    from reportlab.lib.pagesizes import letter
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet
 
     # =====================================================
     # PREPARE STUDENT DATA FOR PDF
     # =====================================================
     students_pdf = students_df.copy()
-
-    # Clean column names
     students_pdf.columns = students_pdf.columns.str.strip().str.lower()
-
-    # Standardize attendance column
     if "attendance %" in students_pdf.columns:
         students_pdf.rename(columns={"attendance %": "attendance"}, inplace=True)
-
     if "attendance_percent" in students_pdf.columns:
         students_pdf.rename(columns={"attendance_percent": "attendance"}, inplace=True)
-
-    # Create improvement column if not exists
     if "improvement" not in students_pdf.columns:
         if "skill_score_after" in students_pdf.columns and "skill_score_before" in students_pdf.columns:
-            students_pdf["improvement"] = (
-                students_pdf["skill_score_after"] -
-                students_pdf["skill_score_before"]
-            )
-
-    # Fill missing attendance safely
+            students_pdf["improvement"] = students_pdf["skill_score_after"] - students_pdf["skill_score_before"]
     if "attendance" not in students_pdf.columns:
         students_pdf["attendance"] = ""
 
@@ -427,19 +412,16 @@ def export_pdf():
     
     # =====================================================
     # INFRASTRUCTURE SUMMARY (FOR TABLE)
+    # =====================================================
     unit_gaps = {}
     infra_data = []
-    
     for _, row in infra_df.iterrows():
         unit = row.get("unit_name", "")
         required = float(row.get("total_required_cost", 0) if pd.notna(row.get("total_required_cost")) else 0)
         received = float(row.get("amount_received", 0) if pd.notna(row.get("amount_received")) else 0)
-        
         if unit not in unit_gaps:
             unit_gaps[unit] = required
-            
         unit_gaps[unit] -= received
-        
         date_rec = row.get("date_fund_received", "")
         if pd.notna(date_rec):
             try:
@@ -448,99 +430,83 @@ def export_pdf():
                 date_rec = str(date_rec).split(' ')[0]
         else:
             date_rec = ""
-        
-        infra_data.append({
-            "unit_name": unit,
-            "total_required_cost": required,
-            "amount_received": received,
-            "gap": unit_gaps[unit],
-            "date_received": date_rec
-        })
+        infra_data.append([unit, f"Rs.{required}", f"Rs.{received}", f"Rs.{unit_gaps[unit]}", date_rec])
 
-    # For chart generation (INFRA GAP CHART)
-    infra_grouped = (
-        infra_df.groupby("unit_name")
-        .agg(
-            total_required_cost=("total_required_cost", "max"),
-            total_received=("amount_received", "sum")
-        )
-        .reset_index()
-    )
+    infra_grouped = infra_df.groupby("unit_name").agg(total_required_cost=("total_required_cost", "max"), total_received=("amount_received", "sum")).reset_index()
     infra_grouped["gap"] = infra_grouped["total_required_cost"] - infra_grouped["total_received"]
 
     # =====================================================
-    # GENERATE THERAPY CHART
+    # GENERATE CHARTS
     # =====================================================
     therapy_labels = list(kpis.get("therapy_wise_improvement", {}).keys())
     therapy_values = list(kpis.get("therapy_wise_improvement", {}).values())
-
-    plt.figure(figsize=(8, 4))
+    plt.figure(figsize=(6, 3))
     plt.bar(therapy_labels, therapy_values)
-    plt.yscale("linear")
     plt.xticks(rotation=45)
     plt.tight_layout()
-
     therapy_chart_path = os.path.abspath("static/therapy_chart.png")
     plt.savefig(therapy_chart_path)
     plt.close()
 
-    # =====================================================
-    # GENERATE INFRA GAP CHART (₹ Axis Fixed)
-    # =====================================================
-    plt.figure(figsize=(8, 4))
+    plt.figure(figsize=(6, 3))
     plt.bar(infra_grouped["unit_name"], infra_grouped["gap"])
-    plt.yscale("linear")
-
     ax = plt.gca()
-    ax.yaxis.set_major_formatter(
-        ticker.FuncFormatter(lambda x, pos: f'₹{int(x):,}')
-    )
-
+    ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda x, pos: f'Rs.{int(x):,}'))
     plt.xticks(rotation=45)
     plt.tight_layout()
-
     infra_chart_path = os.path.abspath("static/infra_chart.png")
     plt.savefig(infra_chart_path)
     plt.close()
 
     # =====================================================
-    # FIX FILE PATHS FOR WKHTMLTOPDF
+    # BUILD PDF USING REPORTLAB
     # =====================================================
-    therapy_chart_path = "file:///" + therapy_chart_path.replace("\\", "/")
-    infra_chart_path = "file:///" + infra_chart_path.replace("\\", "/")
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    elements = []
+    styles = getSampleStyleSheet()
 
-    logo_path = os.path.abspath("static/images/logo.png")
-    logo_path = "file:///" + logo_path.replace("\\", "/")
+    # Title
+    elements.append(Paragraph("CSR Project Report", styles['Title']))
+    elements.append(Paragraph(f"Date: {datetime.now().strftime('%d %B %Y')}", styles['Normal']))
+    elements.append(Spacer(1, 12))
 
-    # =====================================================
-    # RENDER HTML
-    # =====================================================
-    rendered = render_template(
-        "report.html",
-        kpis=kpis,
-        students=students_pdf.to_dict(orient="records"),
-        infra=infra_data,
-        therapy_chart=therapy_chart_path,
-        infra_chart=infra_chart_path,
-        logo_path=logo_path,
-        date=datetime.now().strftime("%d %B %Y")
-    )
+    # KPI Summary
+    elements.append(Paragraph("Executive Summary", styles['Heading2']))
+    kpi_text = f"Total Students: {kpis.get('total_students', 0)} | Funding Coverage: {kpis.get('funding_coverage_percent', 0)}%"
+    elements.append(Paragraph(kpi_text, styles['Normal']))
+    elements.append(Spacer(1, 12))
 
-    if config is None:
-        return "PDF generation is not configured on this server.", 500
+    # Charts
+    elements.append(Paragraph("Therapy Wise Improvement", styles['Heading2']))
+    elements.append(RLImage(therapy_chart_path, width=400, height=200))
+    elements.append(Spacer(1, 12))
 
-    options = {
-        "enable-local-file-access": None
-    }
+    elements.append(Paragraph("Infrastructure Gap Required", styles['Heading2']))
+    elements.append(RLImage(infra_chart_path, width=400, height=200))
+    elements.append(Spacer(1, 12))
 
-    pdf = pdfkit.from_string(
-        rendered,
-        False,
-        configuration=config,
-        options=options
-    )
+    # Infrastructure Table
+    elements.append(Paragraph("Infrastructure Funding Breakdown", styles['Heading2']))
+    infra_table_data = [["Unit Name", "Required", "Received", "Gap", "Date"]] + infra_data
+    t = Table(infra_table_data)
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.grey),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0,0), (-1,0), 12),
+        ('BACKGROUND', (0,1), (-1,-1), colors.beige),
+        ('GRID', (0,0), (-1,-1), 1, colors.black)
+    ]))
+    elements.append(t)
 
-    response = make_response(pdf)
+    doc.build(elements)
+    
+    pdf_out = buffer.getvalue()
+    buffer.close()
+
+    response = make_response(pdf_out)
     response.headers["Content-Type"] = "application/pdf"
     response.headers["Content-Disposition"] = "attachment; filename=CSR_Report.pdf"
 
