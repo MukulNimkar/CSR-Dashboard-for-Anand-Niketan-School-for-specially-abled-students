@@ -2,10 +2,6 @@ from flask import Flask, render_template, request, redirect, url_for, make_respo
 import os
 import json
 from datetime import datetime
-import pdfkit
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 from utils import process_excel, calculate_kpis
@@ -29,13 +25,7 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
-# 🔥 SET YOUR WKHTMLTOPDF PATH HERE
-WKHTML_PATH = os.environ.get("WKHTML_PATH", r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe")
-try:
-    config = pdfkit.configuration(wkhtmltopdf=WKHTML_PATH)
-except Exception as e:
-    print(f"Warning: wkhtmltopdf not found at {WKHTML_PATH}. PDF export will fail.")
-    config = None
+# wkhtmltopdf parsing deferred to the export_pdf route
 
 # =====================================================
 # AUTHENTICATION HELPERS
@@ -393,8 +383,18 @@ def export_pdf():
     if students_df is None or infra_df is None:
         return redirect("/")
 
+    import pdfkit
+    import matplotlib
+    matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     import matplotlib.ticker as ticker
+    
+    WKHTML_PATH = os.environ.get("WKHTML_PATH", r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe")
+    try:
+        config = pdfkit.configuration(wkhtmltopdf=WKHTML_PATH)
+    except Exception as e:
+        print(f"Warning: wkhtmltopdf not found at {WKHTML_PATH}. PDF export will fail.")
+        config = None
 
     # =====================================================
     # PREPARE STUDENT DATA FOR PDF
