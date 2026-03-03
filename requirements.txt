@@ -1,0 +1,8 @@
+Flask
+paramiko
+cryptography
+Werkzeug
+pandas
+openpyxl
+pdfkit
+matplotlib
