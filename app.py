@@ -141,7 +141,13 @@ def infrastructure():
             coverage = round(((required - current_gap) / required) * 100, 1)
             
         date_rec = row.get("date_fund_received", "")
-        date_rec = str(date_rec) if pd.notna(date_rec) else ""
+        if pd.notna(date_rec):
+            try:
+                date_rec = pd.to_datetime(date_rec).strftime('%d-%m-%Y')
+            except Exception:
+                date_rec = str(date_rec).split(' ')[0]
+        else:
+            date_rec = ""
         
         sponsor = row.get("sponsor_name", "")
         sponsor = str(sponsor) if pd.notna(sponsor) else ""
@@ -200,6 +206,31 @@ def infrastructure():
         timeline_labels=timeline_labels,
         timeline_values=timeline_values
     )
+
+# =====================================================
+# DONOR TREE 
+# =====================================================
+@app.route("/donor_tree")
+def donor_tree():
+    global infra_df
+
+    donors = []
+    if infra_df is not None and not infra_df.empty:
+        import pandas as pd
+        import re
+        for _, row in infra_df.iterrows():
+            sponsor = row.get("sponsor_name", "")
+            if pd.notna(sponsor):
+                sponsor_str = str(sponsor).strip()
+                if sponsor_str and sponsor_str.lower() != "nan":
+                    # Split by comma in case multiple sponsors are in one cell
+                    parts = re.split(r'[,]+', sponsor_str)
+                    for part in parts:
+                        cleaned = part.strip()
+                        if cleaned and cleaned not in donors:
+                            donors.append(cleaned)
+                            
+    return render_template("donor_tree.html", donors=donors)
 
 # =====================================================
 # UPLOAD + LOGS
@@ -307,7 +338,13 @@ def export_pdf():
         unit_gaps[unit] -= received
         
         date_rec = row.get("date_fund_received", "")
-        date_rec = str(date_rec) if pd.notna(date_rec) else ""
+        if pd.notna(date_rec):
+            try:
+                date_rec = pd.to_datetime(date_rec).strftime('%d-%m-%Y')
+            except Exception:
+                date_rec = str(date_rec).split(' ')[0]
+        else:
+            date_rec = ""
         
         infra_data.append({
             "unit_name": unit,
