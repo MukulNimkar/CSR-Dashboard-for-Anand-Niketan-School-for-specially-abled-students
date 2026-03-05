@@ -6,6 +6,10 @@ from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 from utils import process_excel, calculate_kpis
 
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
 app = Flask(__name__)
 
 # =====================================================
