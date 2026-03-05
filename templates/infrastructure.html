@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>Infrastructure Funding Dashboard</h1>
+
+<!-- =============================== -->
+<!-- FUNDING COMPARISON CHART -->
+<!-- =============================== -->
+<div class="card">
+    <h3>Funding Comparison (Cumulative)</h3>
+    <div style="height:420px; position:relative;">
+        <canvas id="infraChart"></canvas>
+    </div>
+</div>
+
+<!-- =============================== -->
+<!-- TIMELINE CHART -->
+<!-- =============================== -->
+<div class="card">
+    <h3>Funding Timeline</h3>
+    <div style="height:350px; position:relative;">
+        <canvas id="timelineChart"></canvas>
+    </div>
+</div>
+
+
+<!-- =============================== -->
+<!-- INFRASTRUCTURE PROJECT SUMMARY -->
+<!-- =============================== -->
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h3 style="margin: 0;">Infrastructure Project Summary</h3>
+        <input type="text" id="infraSearch" class="search-input" onkeyup="searchTable('infraSearch', 'infraTable')"
+            placeholder="Search unit, sponsor, progress..." style="margin-bottom:0;">
+    </div>
+
+    {% if infra_projects %}
+    <div class="table-wrapper">
+        <table id="infraTable">
+            <thead>
+                <tr>
+                    <th>Unit</th>
+                    <th>Total Required</th>
+                    <th>Total Received</th>
+                    <th>Date Received</th>
+                    <th>Funding Gap</th>
+                    <th>Coverage %</th>
+                    <th>Progress %</th>
+                    <th>Sponsors</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for project in infra_projects %}
+                <tr>
+                    <td>{{ project.unit_name }}</td>
+
+                    <td>₹ {{ project.total_required_cost }}</td>
+
+                    <td style="color:green; font-weight:bold;">
+                        ₹ {{ project.amount_received }}
+                    </td>
+
+                    <td>
+                        {{ project.date_received }}
+                    </td>
+
+                    <td style="color:red; font-weight:bold;">
+                        ₹ {{ project.gap }}
+                    </td>
+
+                    <td>
+                        {{ project.coverage_percent }}%
+                    </td>
+
+                    <td>
+                        {{ project.construction_progress_percent }}%
+                    </td>
+
+                    <td>
+                        {{ project.sponsors }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p>No infrastructure data available.</p>
+    {% endif %}
+</div>
+
+
+<!-- =============================== -->
+<!-- CHART SCRIPT -->
+<!-- =============================== -->
+<script>
+    const chartLabels = {{ chart_labels | default ([]) | tojson }};
+    const chartRequired = {{ chart_required | default ([]) | tojson }};
+    const chartReceived = {{ chart_received | default ([]) | tojson }};
+
+    if (chartLabels.length > 0) {
+        new Chart(document.getElementById("infraChart"), {
+            type: "bar",
+            data: {
+                labels: chartLabels,
+                datasets: [
+                    {
+                        label: "Total Required",
+                        data: chartRequired,
+                        backgroundColor: "#2563eb",
+                        barPercentage: 0.5,
+                        categoryPercentage: 0.6
+                    },
+                    {
+                        label: "Total Received",
+                        data: chartReceived,
+                        backgroundColor: "#16a34a",
+                        barPercentage: 0.5,
+                        categoryPercentage: 0.6
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: "#000",
+                            font: {
+                                size: 14,
+                                weight: "bold"
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            color: "#000",
+                            font: {
+                                size: 13,
+                                weight: "bold"
+                            }
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            color: "#000",
+                            font: {
+                                size: 13,
+                                weight: "bold"
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    const timelineLabels = {{ timeline_labels | default ([]) | tojson }};
+    const timelineValues = {{ timeline_values | default ([]) | tojson }};
+
+    if (timelineLabels.length > 0) {
+        new Chart(document.getElementById("timelineChart"), {
+            type: "line",
+            data: {
+                labels: timelineLabels,
+                datasets: [{
+                    label: "Funds Received (₹)",
+                    data: timelineValues,
+                    borderColor: "#0ea5e9",
+                    backgroundColor: "rgba(14, 165, 233, 0.2)",
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.3, /* Smooth line */
+                    pointBackgroundColor: "#0284c7",
+                    pointBorderColor: "#fff",
+                    pointRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    datalabels: {
+                        color: '#0369a1',
+                        font: {
+                            weight: 'bold',
+                            size: 13
+                        },
+                        align: 'top',
+                        anchor: 'end',
+                        formatter: function (value, context) {
+                            return '₹ ' + value.toLocaleString('en-IN');
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            },
+            plugins: [ChartDataLabels]
+        });
+    }
+</script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+
+        const chartLabels = {{ chart_labels | default ([]) | tojson
+    }};
+    const chartRequired = {{ chart_required | default ([]) | tojson }};
+    const chartReceived = {{ chart_received | default ([]) | tojson }};
+
+    console.log("Labels:", chartLabels);
+    console.log("Required:", chartRequired);
+    console.log("Received:", chartReceived);
+
+    if (chartLabels.length > 0) {
+        const ctx = document.getElementById("infraChart").getContext("2d");
+
+        new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels: chartLabels,
+                datasets: [
+                    {
+                        label: "Total Required",
+                        data: chartRequired,
+                        backgroundColor: "#2563eb"
+                    },
+                    {
+                        label: "Total Received",
+                        data: chartReceived,
+                        backgroundColor: "#16a34a"
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: "#000",
+                            font: { weight: "bold" }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            color: "#000",
+                            font: { weight: "bold" }
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            color: "#000",
+                            font: { weight: "bold" }
+                        }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
