@@ -392,10 +392,6 @@ def export_pdf():
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     import matplotlib.ticker as ticker
-    from reportlab.lib.pagesizes import letter
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage
-    from reportlab.lib import colors
-    from reportlab.lib.styles import getSampleStyleSheet
 
     # =====================================================
     # PREPARE STUDENT DATA FOR PDF
@@ -463,52 +459,61 @@ def export_pdf():
     plt.close()
 
     # =====================================================
-    # BUILD PDF USING REPORTLAB
+    # BUILD PDF USING PDFKIT
     # =====================================================
-    buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter)
-    elements = []
-    styles = getSampleStyleSheet()
+    import pdfkit
 
-    # Title
-    elements.append(Paragraph("CSR Project Report", styles['Title']))
-    elements.append(Paragraph(f"Date: {datetime.now().strftime('%d %B %Y')}", styles['Normal']))
-    elements.append(Spacer(1, 12))
+    infra_data_dicts = []
+    for row in infra_data:
+        # row is [unit, f"Rs.{required}", f"Rs.{received}", f"Rs.{unit_gaps[unit]}", date_rec]
+        # report.html expects obj.unit_name, obj.total_required_cost, obj.amount_received, obj.gap, obj.date_received
+        infra_data_dicts.append({
+            "unit_name": row[0],
+            "total_required_cost": row[1].replace("Rs.", ""),
+            "amount_received": row[2].replace("Rs.", ""),
+            "gap": row[3].replace("Rs.", ""),
+            "date_received": row[4]
+        })
 
-    # KPI Summary
-    elements.append(Paragraph("Executive Summary", styles['Heading2']))
-    kpi_text = f"Total Students: {kpis.get('total_students', 0)} | Funding Coverage: {kpis.get('funding_coverage_percent', 0)}%"
-    elements.append(Paragraph(kpi_text, styles['Normal']))
-    elements.append(Spacer(1, 12))
+    # Prepare logo
+    logo_path = os.path.abspath(os.path.join("static", "logo.png")) if os.path.exists(os.path.join("static", "logo.png")) else ""
 
-    # Charts
-    elements.append(Paragraph("Therapy Wise Improvement", styles['Heading2']))
-    elements.append(RLImage(therapy_chart_path, width=400, height=200))
-    elements.append(Spacer(1, 12))
+    rendered_html = render_template(
+        "report.html",
+        logo_path=logo_path,
+        date=datetime.now().strftime("%d %B %Y"),
+        kpis=kpis,
+        students=students_pdf.to_dict(orient="records"),
+        therapy_chart=therapy_chart_path,
+        infra=infra_data_dicts,
+        infra_chart=infra_chart_path
+    )
 
-    elements.append(Paragraph("Infrastructure Gap Required", styles['Heading2']))
-    elements.append(RLImage(infra_chart_path, width=400, height=200))
-    elements.append(Spacer(1, 12))
+    pdf_options = {
+        'page-size': 'Letter',
+        'margin-top': '0.75in',
+        'margin-right': '0.75in',
+        'margin-bottom': '0.75in',
+        'margin-left': '0.75in',
+        'encoding': "UTF-8",
+        'enable-local-file-access': None
+    }
 
-    # Infrastructure Table
-    elements.append(Paragraph("Infrastructure Funding Breakdown", styles['Heading2']))
-    infra_table_data = [["Unit Name", "Required", "Received", "Gap", "Date"]] + infra_data
-    t = Table(infra_table_data)
-    t.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), colors.grey),
-        ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
-        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-        ('BOTTOMPADDING', (0,0), (-1,0), 12),
-        ('BACKGROUND', (0,1), (-1,-1), colors.beige),
-        ('GRID', (0,0), (-1,-1), 1, colors.black)
-    ]))
-    elements.append(t)
-
-    doc.build(elements)
+    try:
+        # Provide path to wkhtmltopdf if it's installed in standard Windows location
+        path_wkhtmltopdf = r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"
+        if os.path.exists(path_wkhtmltopdf):
+            config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
+            pdf_out = pdfkit.from_string(rendered_html, False, options=pdf_options, configuration=config)
+        else:
+            pdf_out = pdfkit.from_string(rendered_html, False, options=pdf_options)
+    except Exception as e:
+        print(f"Error generating PDF. Is wkhtmltopdf installed? {str(e)}")
+        # Fallback empty pdf or return error text if failure
+        response = make_response(f"PDF generation failed: {str(e)}")
+        response.headers["Content-Type"] = "text/plain"
+        return response
     
-    pdf_out = buffer.getvalue()
-    buffer.close()
 
     response = make_response(pdf_out)
     response.headers["Content-Type"] = "application/pdf"

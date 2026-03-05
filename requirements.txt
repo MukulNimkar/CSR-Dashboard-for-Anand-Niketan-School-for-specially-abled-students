@@ -3,4 +3,4 @@ Werkzeug
 pandas
 openpyxl
 matplotlib
-reportlab
+pdfkit
