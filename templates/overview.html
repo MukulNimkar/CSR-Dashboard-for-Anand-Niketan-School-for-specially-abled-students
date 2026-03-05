@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>CSR Overview Dashboard</h1>
+
+<div style="margin-bottom:20px;">
+    <a href="{{ url_for('export_pdf') }}">
+        <button style="
+            background:#16a34a;
+            color:white;
+            padding:10px 20px;
+            border:none;
+            border-radius:8px;
+            font-weight:600;
+            cursor:pointer;">
+            Download CSR Report (PDF)
+        </button>
+    </a>
+</div>
+<!-- ================= KPI GRID ================= -->
+<div class="kpi-grid">
+
+    <div class="kpi-card">
+        <h3>Total Students</h3>
+        <h2>{{ kpis.total_students }}</h2>
+    </div>
+
+    <div class="kpi-card">
+        <h3>Avg Attendance</h3>
+        <h2>{{ kpis.avg_attendance }}%</h2>
+    </div>
+
+    <div class="kpi-card">
+        <h3>Avg Improvement</h3>
+        <h2>{{ kpis.avg_improvement }}</h2>
+    </div>
+
+    <div class="kpi-card">
+        <h3>Student Funding Gap</h3>
+        <h2>₹ {{ kpis.student_funding_gap }}</h2>
+    </div>
+
+    <div class="kpi-card">
+        <h3>Infrastructure Gap</h3>
+        <h2>₹ {{ kpis.infrastructure_gap }}</h2>
+    </div>
+
+    <div class="kpi-card">
+        <h3>Total Funding Gap</h3>
+        <h2>₹ {{ kpis.total_funding_gap }}</h2>
+    </div>
+
+    <div class="kpi-card">
+        <h3>Infrastructure Funding Coverage</h3>
+        <h2>{{ kpis.funding_coverage_percent }}%</h2>
+    </div>
+
+    <div class="kpi-card">
+        <h3>Cost per Student</h3>
+        <h2>₹ {{ kpis.cost_per_student }}</h2>
+    </div>
+
+    <div class="kpi-card">
+        <h3>Cost per Improvement Point</h3>
+        <h2>₹ {{ kpis.cost_per_improvement_point }}</h2>
+    </div>
+
+</div>
+
+<!-- ================= PIE CHARTS SIDE BY SIDE ================= -->
+<div class="chart-grid">
+
+    <!-- Disability Distribution -->
+    <div class="card">
+        <h3>Disability Distribution</h3>
+        <div class="small-chart">
+            <canvas id="disabilityChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Sponsor Contribution -->
+    <div class="card">
+        <h3>Sponsor Contribution Distribution</h3>
+        <div class="small-chart">
+            <canvas id="sponsorChart"></canvas>
+        </div>
+    </div>
+
+</div>
+
+<!-- ================= THERAPY BAR ================= -->
+<div class="card">
+    <h3>Therapy-wise Average Improvement</h3>
+    <div class="medium-chart">
+        <canvas id="therapyChart"></canvas>
+    </div>
+</div>
+
+<!-- ================= DISABILITY IMPROVEMENT BAR ================= -->
+<div class="card">
+    <h3>Disability-wise Average Improvement</h3>
+    <div class="medium-chart">
+        <canvas id="disabilityImprovementChart"></canvas>
+    </div>
+</div>
+
+<style>
+    /* Two charts side by side */
+    .chart-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+        margin-bottom: 40px;
+    }
+
+    /* Pie charts smaller */
+    .small-chart {
+        height: 320px;
+    }
+
+    /* Bar chart medium */
+    .medium-chart {
+        height: 360px;
+    }
+</style>
+
+<!-- ================= SCRIPTS ================= -->
+<script>
+
+    /* -------- DISABILITY PIE -------- */
+    const disabilityLabels = {{ kpis.disability_counts.keys() | list | tojson }};
+    const disabilityValues = {{ kpis.disability_counts.values() | list | tojson }};
+
+    if (disabilityLabels.length > 0) {
+        new Chart(document.getElementById("disabilityChart"), {
+            type: "doughnut",
+            data: {
+                labels: disabilityLabels,
+                datasets: [{
+                    data: disabilityValues,
+                    backgroundColor: [
+                        "#2563eb",
+                        "#16a34a",
+                        "#f59e0b",
+                        "#ef4444",
+                        "#8b5cf6"
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: "bottom"
+                    },
+                    datalabels: {
+                        color: '#fff',
+                        font: { weight: 'bold', size: 12 },
+                        formatter: function (value, context) {
+                            let sum = 0;
+                            let dataArr = context.chart.data.datasets[0].data;
+                            dataArr.forEach(data => { sum += Number(data); });
+                            let percentage = (value * 100 / sum).toFixed(1) + "%";
+                            return value + "\n(" + percentage + ")";
+                        },
+                        textAlign: 'center'
+                    }
+                }
+            }
+        });
+    }
+
+    /* -------- SPONSOR PIE -------- */
+    const sponsorLabels = {{ kpis.sponsor_contribution.keys() | list | tojson }};
+    const sponsorValues = {{ kpis.sponsor_contribution.values() | list | tojson }};
+
+    if (sponsorLabels.length > 0) {
+        new Chart(document.getElementById("sponsorChart"), {
+            type: "doughnut",
+            data: {
+                labels: sponsorLabels,
+                datasets: [{
+                    data: sponsorValues,
+                    backgroundColor: [
+                        "#1d4ed8",
+                        "#059669",
+                        "#d97706",
+                        "#dc2626",
+                        "#7c3aed",
+                        "#0ea5e9"
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: "bottom"
+                    },
+                    datalabels: {
+                        color: '#fff',
+                        font: { weight: 'bold', size: 12 },
+                        formatter: function (value, context) {
+                            let sum = 0;
+                            let dataArr = context.chart.data.datasets[0].data;
+                            dataArr.forEach(data => { sum += Number(data); });
+                            let percentage = (value * 100 / sum).toFixed(1) + "%";
+                            return value + "\n(" + percentage + ")";
+                        },
+                        textAlign: 'center'
+                    }
+                }
+            }
+        });
+    }
+
+    /* -------- THERAPY BAR -------- */
+    const therapyLabels = {{ kpis.therapy_wise_improvement.keys() | list | tojson }};
+    const therapyValues = {{ kpis.therapy_wise_improvement.values() | list | tojson }};
+
+    if (therapyLabels.length > 0) {
+        new Chart(document.getElementById("therapyChart"), {
+            type: "bar",
+            data: {
+                labels: therapyLabels,
+                datasets: [{
+                    label: "Average Improvement",
+                    data: therapyValues,
+                    backgroundColor: "#2563eb",
+                    borderRadius: 8,
+                    maxBarThickness: 50
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: "#000", font: { weight: "bold" } } },
+                    y: { ticks: { color: "#000", font: { weight: "bold" } } }
+                }
+            }
+        });
+    }
+
+    /* -------- DISABILITY IMPROVEMENT BAR -------- */
+    const disImpLabels = {{ kpis.disability_wise_improvement.keys() | list | tojson }};
+    const disImpValues = {{ kpis.disability_wise_improvement.values() | list | tojson }};
+
+    if (disImpLabels.length > 0) {
+        new Chart(document.getElementById("disabilityImprovementChart"), {
+            type: "bar",
+            data: {
+                labels: disImpLabels,
+                datasets: [{
+                    label: "Average Improvement",
+                    data: disImpValues,
+                    backgroundColor: "#10b981",
+                    borderRadius: 8,
+                    maxBarThickness: 50
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: "#000", font: { weight: "bold" } } },
+                    y: { ticks: { color: "#000", font: { weight: "bold" } } }
+                }
+            }
+        });
+    }
+
+</script>
+
+{% endblock %}
