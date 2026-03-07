@@ -476,7 +476,8 @@ def export_pdf():
         })
 
     # Prepare logo
-    logo_path = os.path.abspath(os.path.join("static", "logo.png")) if os.path.exists(os.path.join("static", "logo.png")) else ""
+    logo_file = os.path.join("static", "images", "logo.png")
+    logo_path = os.path.abspath(logo_file) if os.path.exists(logo_file) else ""
 
     rendered_html = render_template(
         "report.html",
