@@ -80,10 +80,13 @@
 
 <body>
 
-    <!-- LOGO -->
-    <img src="{{ logo_path }}" class="logo">
-
-    <h1>CSR Impact Report</h1>
+    <div style="text-align: center; margin-bottom: 20px;">
+        {% if logo_path %}
+        <img src="{{ logo_path }}" class="logo" alt="Astha's Anand Niketan Logo" style="display: block; margin: 0 auto; margin-bottom: 10px;">
+        {% endif %}
+        <h1 style="margin: 0; padding: 0;">Astha's Anand Niketan</h1>
+        <h2 style="color: #555; margin-top: 5px; margin-bottom: 0; border-bottom: none; text-align: center;">CSR Impact Report</h2>
+    </div>
     <div class="date">
         Generated on: {{ date }}
     </div>
@@ -103,7 +106,7 @@
     <table>
         <tr>
             <th>ID</th>
-            <th>Disability</th>
+            <th>Special Needs</th>
             <th>Therapy</th>
             <th>Teacher</th>
             <th>Attendance %</th>
